@@ -1,5 +1,6 @@
 
 import { User, Match } from '@/types';
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock database for demo purposes
 let users: User[] = [
@@ -61,7 +62,46 @@ let currentUser: User | null = null;
 
 export const userService = {
   // Login user (in a real app, this would authenticate with backend)
-  login: (username: string, password: string): Promise<User> => {
+  login: async (username: string, password: string): Promise<User> => {
+    try {
+      // Try to authenticate with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: `${username}@example.com`, // Using username as email for simplicity
+        password: password
+      });
+
+      if (authError) throw authError;
+      
+      if (authData?.user) {
+        // Check if the user is a demo account
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('is_demo, username, avatar_url')
+          .eq('id', authData.user.id)
+          .single();
+          
+        // Get wallet info
+        const { data: walletData } = await supabase
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', authData.user.id)
+          .single();
+          
+        const user: User = {
+          id: authData.user.id,
+          username: profileData?.username || username,
+          balance: walletData?.balance || 0,
+          avatar: profileData?.avatar_url || '♟'
+        };
+          
+        currentUser = user;
+        return user;
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+    }
+
+    // Fallback to demo login if Supabase auth fails or for demo accounts
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
@@ -70,7 +110,7 @@ export const userService = {
           currentUser = user;
           resolve(user);
         } else {
-          // For demo purposes, create a new user if not found
+          // Create a new demo user if not found
           const newUser: User = {
             id: `user_${Math.random().toString(36).substr(2, 9)}`,
             username,
@@ -86,7 +126,41 @@ export const userService = {
   },
 
   // Get current user
-  getCurrentUser: (): Promise<User | null> => {
+  getCurrentUser: async (): Promise<User | null> => {
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      
+      if (session?.session?.user) {
+        const userId = session.session.user.id;
+        
+        // Check if the user is a demo account
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('is_demo, username, avatar_url')
+          .eq('id', userId)
+          .single();
+          
+        // Get wallet info
+        const { data: walletData } = await supabase
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', userId)
+          .single();
+          
+        const user: User = {
+          id: userId,
+          username: profileData?.username || 'User',
+          balance: walletData?.balance || 0,
+          avatar: profileData?.avatar_url || '♟'
+        };
+          
+        currentUser = user;
+        return user;
+      }
+    } catch (error) {
+      console.error("Get current user error:", error);
+    }
+    
     return Promise.resolve(currentUser);
   },
 
@@ -96,11 +170,15 @@ export const userService = {
   },
 
   // Logout user
-  logout: (): Promise<void> => {
-    return new Promise((resolve) => {
+  logout: async (): Promise<void> => {
+    try {
+      await supabase.auth.signOut();
       currentUser = null;
-      resolve();
-    });
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Logout error:", error);
+      return Promise.resolve();
+    }
   },
 
   // Get user by ID
@@ -156,7 +234,35 @@ export const userService = {
   },
 
   // Get all matches for a user
-  getUserMatches: (userId: string): Promise<Match[]> => {
+  getUserMatches: async (userId: string): Promise<Match[]> => {
+    // Check if the user is a demo account
+    try {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('is_demo')
+        .eq('id', userId)
+        .single();
+        
+      if (profileData?.is_demo === false) {
+        // For real accounts, get data from the database
+        const { data, error } = await supabase
+          .from('matches')
+          .select('*')
+          .or(`white_player_id.eq.${userId},black_player_id.eq.${userId}`)
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          console.error("Error fetching matches:", error);
+          return [];
+        }
+        
+        return data || [];
+      }
+    } catch (error) {
+      console.error("Error checking if user is demo:", error);
+    }
+    
+    // Fallback to demo data
     return new Promise((resolve) => {
       const userMatches = matches.filter(
         m => m.whitePlayerId === userId || m.blackPlayerId === userId

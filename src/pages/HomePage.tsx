@@ -7,14 +7,48 @@ import { userService } from "@/services/userService";
 import { useQuery } from "@tanstack/react-query";
 import { MatchCard } from "@/components/MatchCard";
 import { ChessBoard } from "@/components/ChessBoard";
+import { supabase } from "@/integrations/supabase/client";
 
 export const HomePage = () => {
   const { user } = useAuth();
   
+  // Query for getting real matches from database for authenticated users
   const { data: recentMatches } = useQuery({
-    queryKey: ["recentMatches"],
-    queryFn: () => userService.getAllMatches(),
-    select: (data) => data.slice(0, 3),
+    queryKey: ["recentMatches", user?.id],
+    queryFn: async () => {
+      // For authenticated users, fetch matches from database
+      if (user) {
+        // Check if user is a demo account
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('is_demo')
+          .eq('id', user.id)
+          .single();
+          
+        const isDemo = profileData?.is_demo;
+        
+        // Use mock data for demo accounts, real data for real accounts
+        if (isDemo) {
+          return userService.getAllMatches();
+        } else {
+          // For real accounts, get matches from the database
+          const { data: matches, error } = await supabase
+            .from('matches')
+            .select('*')
+            .or(`white_player_id.eq.${user.id},black_player_id.eq.${user.id}`)
+            .order('created_at', { ascending: false })
+            .limit(3);
+            
+          if (error) {
+            console.error("Error fetching matches:", error);
+            return [];
+          }
+          
+          return matches || [];
+        }
+      }
+      return [];
+    },
     enabled: !!user
   });
   

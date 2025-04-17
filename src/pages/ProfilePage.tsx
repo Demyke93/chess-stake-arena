@@ -8,10 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MatchCard } from "@/components/MatchCard";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
 const ProfilePage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [isDemo, setIsDemo] = useState<boolean | null>(null);
 
   // Redirect if not logged in
   if (!user) {
@@ -19,9 +22,53 @@ const ProfilePage = () => {
     return null;
   }
 
+  // Check if the account is a demo account
+  useEffect(() => {
+    const checkDemoStatus = async () => {
+      try {
+        if (user) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('is_demo')
+            .eq('id', user.id)
+            .single();
+            
+          setIsDemo(profileData?.is_demo || false);
+        }
+      } catch (error) {
+        console.error("Error checking demo status:", error);
+        setIsDemo(false);
+      }
+    };
+    
+    checkDemoStatus();
+  }, [user]);
+
   const { data: matches = [] } = useQuery({
-    queryKey: ["userMatches", user.id],
-    queryFn: () => userService.getUserMatches(user.id),
+    queryKey: ["userMatches", user.id, isDemo],
+    queryFn: async () => {
+      if (isDemo === true) {
+        // Use mock data for demo accounts
+        return userService.getUserMatches(user.id);
+      } else if (isDemo === false) {
+        // For real accounts, get matches from the database
+        const { data, error } = await supabase
+          .from('matches')
+          .select('*')
+          .or(`white_player_id.eq.${user.id},black_player_id.eq.${user.id}`)
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          console.error("Error fetching matches:", error);
+          return [];
+        }
+        
+        return data || [];
+      }
+      
+      return [];
+    },
+    enabled: !!user && isDemo !== null
   });
 
   // Calculate stats
@@ -50,7 +97,7 @@ const ProfilePage = () => {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-xl">{user.username}</CardTitle>
-              <CardDescription>Player Profile</CardDescription>
+              <CardDescription>Player Profile {isDemo && '(Demo Account)'}</CardDescription>
             </div>
             <Avatar className="h-16 w-16 bg-chess-brown text-2xl">
               <AvatarFallback>{user.avatar || '♟'}</AvatarFallback>
@@ -105,6 +152,12 @@ const ProfilePage = () => {
                   </Badge>
                 </div>
               </div>
+              
+              {isDemo && (
+                <div className="bg-amber-500/20 p-3 rounded-md border border-amber-500/30">
+                  <p className="text-amber-300 text-sm">This is a demo account. Some features may be limited.</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
