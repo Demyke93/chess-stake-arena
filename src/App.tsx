@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +12,7 @@ import CreateMatchPage from "./pages/CreateMatchPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import NotFound from "./pages/NotFound";
 import { Layout } from "./components/Layout";
+import WalletPage from "./pages/WalletPage";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +31,7 @@ const App = () => (
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/create-match" element={<CreateMatchPage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
+              <Route path="/wallet" element={<WalletPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

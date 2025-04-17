@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,9 @@ import { Match } from "@/types";
 import { ChessBoard } from "@/components/ChessBoard";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/ui/toast";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface MatchCardProps {
   match: Match;
@@ -15,6 +17,9 @@ interface MatchCardProps {
 
 export const MatchCard = ({ match, onViewDetails, onJoinMatch }: MatchCardProps) => {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [showFeeWarning, setShowFeeWarning] = useState(false);
+  
   const isUserInMatch = user && (match.whitePlayerId === user.id || match.blackPlayerId === user.id);
   const userIsWinner = user && match.winner === user.id;
   const userIsLoser = user && match.status === 'completed' && match.winner && match.winner !== user.id && isUserInMatch;
@@ -27,6 +32,21 @@ export const MatchCard = ({ match, onViewDetails, onJoinMatch }: MatchCardProps)
       case 'cancelled': return 'bg-red-600';
       default: return 'bg-gray-600';
     }
+  };
+
+  const handleJoinWithFee = async () => {
+    if (!match.fee_accepted) {
+      setShowFeeWarning(true);
+      return;
+    }
+    
+    if (onJoinMatch) {
+      onJoinMatch(match);
+    }
+  };
+
+  const calculateFee = (stake: number) => {
+    return Math.ceil(stake * 0.01); // 1% fee
   };
 
   return (
@@ -67,9 +87,37 @@ export const MatchCard = ({ match, onViewDetails, onJoinMatch }: MatchCardProps)
         
         <CardFooter className="flex justify-between">
           {match.status === 'pending' && !isUserInMatch && onJoinMatch && (
-            <Button onClick={() => onJoinMatch(match)} className="w-full">
-              Join Match
-            </Button>
+            <>
+              <Button onClick={handleJoinWithFee} className="w-full">
+                Join Match ({match.stake} coins + {calculateFee(match.stake)} fee)
+              </Button>
+              
+              <Dialog open={showFeeWarning} onOpenChange={setShowFeeWarning}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Transaction Fee</DialogTitle>
+                    <DialogDescription>
+                      This match has a 1% transaction fee of {calculateFee(match.stake)} coins.
+                      Total amount: {match.stake + calculateFee(match.stake)} coins.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="flex justify-end gap-4">
+                    <Button variant="outline" onClick={() => setShowFeeWarning(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={() => {
+                      setShowFeeWarning(false);
+                      if (onJoinMatch) {
+                        match.fee_accepted = true;
+                        onJoinMatch(match);
+                      }
+                    }}>
+                      Accept & Join
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
           )}
           
           {match.status === 'pending' && isUserInMatch && (
