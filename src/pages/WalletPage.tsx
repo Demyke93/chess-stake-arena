@@ -29,10 +29,37 @@ const WalletPage = () => {
   });
 
   const handleDeposit = async () => {
-    if (!user?.email) {
+    if (!user) {
       toast({
         title: 'Error',
         description: 'Please log in to make a deposit',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Get user email from profile if user.email is not available
+    let userEmail = user.email;
+    
+    if (!userEmail) {
+      try {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', user.id)
+          .single();
+          
+        if (profileError) throw profileError;
+        userEmail = profileData?.email;
+      } catch (error) {
+        console.error('Error fetching user email:', error);
+      }
+    }
+
+    if (!userEmail) {
+      toast({
+        title: 'Error',
+        description: 'No email found for your account. Please update your profile.',
         variant: 'destructive',
       });
       return;
@@ -42,7 +69,7 @@ const WalletPage = () => {
       const response = await supabase.functions.invoke('paystack', {
         body: { 
           amount: Number(amount),
-          email: user.email,
+          email: userEmail,
           type: 'deposit'
         },
       });

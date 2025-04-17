@@ -5,7 +5,7 @@ import { Match } from "@/types";
 import { ChessBoard } from "@/components/ChessBoard";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 

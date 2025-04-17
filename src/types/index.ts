@@ -1,9 +1,9 @@
-
 export interface User {
   id: string;
   username: string;
   balance: number;
   avatar?: string;
+  email?: string;
 }
 
 export interface Match {
@@ -20,6 +20,7 @@ export interface Match {
   lichessGameId?: string;
   createdAt: string;
   updatedAt: string;
+  fee_accepted?: boolean;
 }
 
 export interface StakeSettings {
