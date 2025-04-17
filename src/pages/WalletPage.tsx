@@ -38,25 +38,8 @@ const WalletPage = () => {
       return;
     }
     
-    // Get user email from profile if user.email is not available
-    let userEmail = user.email;
-    
-    if (!userEmail) {
-      try {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('id', user.id)
-          .single();
-          
-        if (profileError) throw profileError;
-        userEmail = profileData?.email;
-      } catch (error) {
-        console.error('Error fetching user email:', error);
-      }
-    }
-
-    if (!userEmail) {
+    // Use email from auth context if available, or prompt user
+    if (!user.email) {
       toast({
         title: 'Error',
         description: 'No email found for your account. Please update your profile.',
@@ -69,7 +52,7 @@ const WalletPage = () => {
       const response = await supabase.functions.invoke('paystack', {
         body: { 
           amount: Number(amount),
-          email: userEmail,
+          email: user.email,
           type: 'deposit'
         },
       });
