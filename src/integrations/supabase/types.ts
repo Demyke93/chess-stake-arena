@@ -165,6 +165,7 @@ export type Database = {
           display_name: string | null
           gaming_preferences: Json | null
           id: string
+          is_demo: boolean | null
           rating: number | null
           updated_at: string | null
           username: string | null
@@ -175,6 +176,7 @@ export type Database = {
           display_name?: string | null
           gaming_preferences?: Json | null
           id?: string
+          is_demo?: boolean | null
           rating?: number | null
           updated_at?: string | null
           username?: string | null
@@ -185,6 +187,7 @@ export type Database = {
           display_name?: string | null
           gaming_preferences?: Json | null
           id?: string
+          is_demo?: boolean | null
           rating?: number | null
           updated_at?: string | null
           username?: string | null
@@ -220,33 +223,63 @@ export type Database = {
           },
         ]
       }
+      system_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          key: string
+          updated_at: string | null
+          value: Json
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          key: string
+          updated_at?: string | null
+          value: Json
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          key?: string
+          updated_at?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
           created_at: string | null
           id: string
+          payout_details: Json | null
           reference: string | null
           status: string
           type: string
           wallet_id: string
+          withdrawal_status: string | null
         }
         Insert: {
           amount: number
           created_at?: string | null
           id?: string
+          payout_details?: Json | null
           reference?: string | null
           status: string
           type: string
           wallet_id: string
+          withdrawal_status?: string | null
         }
         Update: {
           amount?: number
           created_at?: string | null
           id?: string
+          payout_details?: Json | null
           reference?: string | null
           status?: string
           type?: string
           wallet_id?: string
+          withdrawal_status?: string | null
         }
         Relationships: [
           {
@@ -423,10 +456,12 @@ export type Database = {
           amount: number
           created_at: string | null
           id: string
+          payout_details: Json | null
           reference: string | null
           status: string
           type: string
           wallet_id: string
+          withdrawal_status: string | null
         }
       }
       update_transaction_status: {

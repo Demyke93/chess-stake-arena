@@ -20,24 +20,47 @@ serve(async (req) => {
   try {
     const { amount, email, type } = await req.json()
     
-    // Initialize transaction with Paystack
-    const response = await fetch('https://api.paystack.co/transaction/initialize', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        email,
-        amount: amount * 100, // Convert to kobo
-        callback_url: `${req.headers.get('origin')}/wallet`
+    if (type === 'withdrawal') {
+      // For withdrawal requests, we'll create a transfer recipient and initiate transfer
+      // This is a simplified example - in production you'd want to verify bank details
+      const response = await fetch('https://api.paystack.co/transfer/callback', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          source: 'balance',
+          amount: amount * 100, // Convert to kobo
+          recipient: email,
+          reason: 'Withdrawal from ChessStake'
+        })
       })
-    })
 
-    const data = await response.json()
-    return new Response(JSON.stringify(data), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+      const data = await response.json()
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    } else {
+      // Handle deposits as before
+      const response = await fetch('https://api.paystack.co/transaction/initialize', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          amount: amount * 100, // Convert to kobo
+          callback_url: `${req.headers.get('origin')}/wallet`
+        })
+      })
+
+      const data = await response.json()
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
